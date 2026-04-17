@@ -1,0 +1,14 @@
+ethereum_rpc = "https://ethereum-hoodi-rpc.publicnode.com"
+drosera_rpc = "https://relay.testnet.drosera.io"
+eth_chain_id = 560048
+
+[traps.hyperbridge_forged_proof_mint_trap_hoodi]
+path = "out/HyperbridgeForgedProofMintTrap.sol/HyperbridgeForgedProofMintTrap.json"
+response_contract = "0x0000000000000000000000000000000000000000"
+response_function = "handleIncident((bytes32,address,uint256,uint256,uint256,bytes))"
+cooldown_period_blocks = 0
+min_number_of_operators = 1
+max_number_of_operators = 2
+block_sample_size = 4
+private_trap = false
+whitelist = []
