@@ -7,8 +7,9 @@ interface IMockToken {
 }
 
 contract HyperbridgeForgedProofMintProtocolMock {
-    address public constant DEFAULT_TOKEN = address(0x0000000000000000000000000000000000002002);
-    address public token = DEFAULT_TOKEN;
+    address public owner;
+    address public emergencyModule;
+    address public token;
     address public attacker;
     bool public paused;
     bool public staged;
@@ -23,9 +24,31 @@ contract HyperbridgeForgedProofMintProtocolMock {
     uint256 public escrowBackedSupply;
     uint256 public pendingMintAmount;
 
+    error NotOwner();
+    error NotEmergencyModule();
+    error ProtocolPaused();
+
+    constructor(address token_) {
+        owner = msg.sender;
+        token = token_;
+    }
+
+    function setEmergencyModule(address emergencyModule_) external {
+        _claimOwnerIfNeeded();
+        if (msg.sender != owner) revert NotOwner();
+        emergencyModule = emergencyModule_;
+    }
+
+    function setToken(address token_) external {
+        _claimOwnerIfNeeded();
+        if (msg.sender != owner) revert NotOwner();
+        token = token_;
+    }
+
     function seedHealthy(address attacker_) external {
+        _claimOwnerIfNeeded();
+        if (msg.sender != owner) revert NotOwner();
         attacker = attacker_;
-        if (token == address(0)) token = DEFAULT_TOKEN;
         paused = false;
         staged = false;
         latestRequestHash = bytes32(uint256(1));
@@ -40,11 +63,8 @@ contract HyperbridgeForgedProofMintProtocolMock {
         pendingMintAmount = 0;
     }
 
-    function setToken(address token_) external {
-        token = token_;
-    }
-
     function stageForgedProofAdminChange() external {
+        if (paused) revert ProtocolPaused();
         latestRequestHash = bytes32(uint256(99));
         latestPayloadHash = bytes32(uint256(100));
         latestProofCommitment = bytes32(uint256(3));
@@ -59,12 +79,13 @@ contract HyperbridgeForgedProofMintProtocolMock {
     }
 
     function mintUnbackedToken() external {
-        require(!paused, "PROTOCOL_PAUSED");
+        if (paused) revert ProtocolPaused();
         require(staged, "EXPLOIT_NOT_STAGED");
         IMockToken(token).mint(attacker, 100e18);
     }
 
-    function pauseAll() external {
+    function emergencyPause() external {
+        if (msg.sender != emergencyModule) revert NotEmergencyModule();
         paused = true;
     }
 
@@ -74,5 +95,9 @@ contract HyperbridgeForgedProofMintProtocolMock {
 
     function getMetrics() external view returns (bytes32, bytes32, bytes32, bytes32, uint256, address, address, uint256, uint256, uint256, uint256, bool) {
         return (latestRequestHash, latestPayloadHash, latestProofCommitment, latestBoundProofKey, latestNonce, tokenAdmin, expectedTokenAdmin, totalSupply, escrowBackedSupply, pendingMintAmount, block.number, paused);
+    }
+
+    function _claimOwnerIfNeeded() internal {
+        if (owner == address(0)) owner = msg.sender;
     }
 }

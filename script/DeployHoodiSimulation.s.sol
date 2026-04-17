@@ -5,6 +5,7 @@ import "../src/mocks/MockToken.sol";
 import "../src/mocks/HyperbridgeForgedProofMintProtocolMock.sol";
 import "../src/mocks/HyperbridgeForgedProofMintAttacker.sol";
 import "../src/HyperbridgeForgedProofMintResponse.sol";
+import "../src/HyperbridgeForgedProofMintEnvironmentRegistry.sol";
 
 interface VmScript {
     function startBroadcast() external;
@@ -19,20 +20,19 @@ contract DeployHoodiSimulation {
         address protocol;
         address attacker;
         address response;
+        address registry;
     }
-
-    Deployment public deployment;
 
     function run() external returns (Deployment memory out) {
         vm.startBroadcast();
         MockToken token = new MockToken();
-        HyperbridgeForgedProofMintProtocolMock protocol = new HyperbridgeForgedProofMintProtocolMock();
+        HyperbridgeForgedProofMintProtocolMock protocol = new HyperbridgeForgedProofMintProtocolMock(address(token));
         HyperbridgeForgedProofMintAttacker attacker = new HyperbridgeForgedProofMintAttacker(address(protocol));
         HyperbridgeForgedProofMintResponse response = new HyperbridgeForgedProofMintResponse();
-        protocol.setToken(address(token));
+        protocol.setEmergencyModule(address(response));
         protocol.seedHealthy(address(attacker));
-        out = Deployment(address(token), address(protocol), address(attacker), address(response));
-        deployment = out;
+        HyperbridgeForgedProofMintEnvironmentRegistry registry = new HyperbridgeForgedProofMintEnvironmentRegistry(keccak256("hyperbridge-forged-proof-mint-trap-hoodi"), address(protocol), address(response), address(response), true);
+        out = Deployment(address(token), address(protocol), address(attacker), address(response), address(registry));
         vm.stopBroadcast();
     }
 }
