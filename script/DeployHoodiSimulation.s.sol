@@ -10,6 +10,8 @@ import "../src/HyperbridgeForgedProofMintEnvironmentRegistry.sol";
 interface VmScript {
     function startBroadcast() external;
     function stopBroadcast() external;
+    function addr(uint256 privateKey) external returns (address);
+    function envUint(string calldata key) external returns (uint256);
 }
 
 contract DeployHoodiSimulation {
@@ -24,14 +26,17 @@ contract DeployHoodiSimulation {
     }
 
     function run() external returns (Deployment memory out) {
+        uint256 deployerKey = vm.envUint("HOODI_PRIVATE_KEY");
+        address deployer = vm.addr(deployerKey);
         vm.startBroadcast();
         MockToken token = new MockToken();
         HyperbridgeForgedProofMintProtocolMock protocol = new HyperbridgeForgedProofMintProtocolMock(address(token));
         HyperbridgeForgedProofMintAttacker attacker = new HyperbridgeForgedProofMintAttacker(address(protocol));
-        HyperbridgeForgedProofMintResponse response = new HyperbridgeForgedProofMintResponse();
+        HyperbridgeForgedProofMintEnvironmentRegistry registry = new HyperbridgeForgedProofMintEnvironmentRegistry(keccak256("hyperbridge-forged-proof-mint-trap-hoodi"), address(protocol), deployer, deployer, true);
+        HyperbridgeForgedProofMintResponse response = new HyperbridgeForgedProofMintResponse(address(registry));
         protocol.setEmergencyModule(address(response));
         protocol.seedHealthy(address(attacker));
-        HyperbridgeForgedProofMintEnvironmentRegistry registry = new HyperbridgeForgedProofMintEnvironmentRegistry(keccak256("hyperbridge-forged-proof-mint-trap-hoodi"), address(protocol), address(response), address(response), true);
+        registry.setConfig(keccak256("hyperbridge-forged-proof-mint-trap-hoodi"), address(protocol), address(response), address(response), true);
         out = Deployment(address(token), address(protocol), address(attacker), address(response), address(registry));
         vm.stopBroadcast();
     }
